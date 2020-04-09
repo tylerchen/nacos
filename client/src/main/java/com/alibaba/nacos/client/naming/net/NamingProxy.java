@@ -48,7 +48,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.URLEncoder;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -128,6 +130,7 @@ public class NamingProxy {
         }, 0, securityInfoRefreshIntervalMills, TimeUnit.MILLISECONDS);
 
         refreshSrvIfNeed();
+        securityProxy.login(getServerList());
     }
 
     public List<String> getServerListFromEndpoint() {
@@ -326,7 +329,11 @@ public class NamingProxy {
         Map<String, String> params = new HashMap<String, String>(8);
         String body = StringUtils.EMPTY;
         if (!lightBeatEnabled) {
-            body = "beat=" + JSON.toJSONString(beatInfo);
+            try {
+                body = "beat=" + URLEncoder.encode(JSON.toJSONString(beatInfo), "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                throw new NacosException(NacosException.SERVER_ERROR, "encode beatInfo error", e);
+            }
         }
         params.put(CommonParams.NAMESPACE_ID, namespaceId);
         params.put(CommonParams.SERVICE_NAME, beatInfo.getServiceName());
@@ -485,7 +492,7 @@ public class NamingProxy {
         NAMING_LOGGER.error("request: {} failed, servers: {}, code: {}, msg: {}",
             api, servers, exception.getErrCode(), exception.getErrMsg());
 
-        throw new NacosException(exception.getErrCode(), "failed to req API:/api/" + api + " after all servers(" + servers + ") tried: "
+        throw new NacosException(exception.getErrCode(), "failed to req API:" + api + " after all servers(" + servers + ") tried: "
             + exception.getMessage());
 
     }
